@@ -1,46 +1,70 @@
 # -*- coding: utf-8 -*-
+from Item_class import Item
+from typing import Iterable, Protocol
 
-class GildedRose(object):
+def decrease_item_sell_in(item: Item, days: int = 1) -> None:
+    item.sell_in -= days
 
-    def __init__(self, items):
-        self.items = items
+def decrease_item_quality(item: Item, amount: int = 1) -> None:
+    item.quality = max(0, item.quality - amount)
 
-    def update_quality(self):
-        for item in self.items:
-            if item.name != "Aged Brie" and item.name != "Backstage passes to a TAFKAL80ETC concert":
-                if item.quality > 0:
-                    if item.name != "Sulfuras, Hand of Ragnaros":
-                        item.quality = item.quality - 1
-            else:
-                if item.quality < 50:
-                    item.quality = item.quality + 1
-                    if item.name == "Backstage passes to a TAFKAL80ETC concert":
-                        if item.sell_in < 11:
-                            if item.quality < 50:
-                                item.quality = item.quality + 1
-                        if item.sell_in < 6:
-                            if item.quality < 50:
-                                item.quality = item.quality + 1
-            if item.name != "Sulfuras, Hand of Ragnaros":
-                item.sell_in = item.sell_in - 1
-            if item.sell_in < 0:
-                if item.name != "Aged Brie":
-                    if item.name != "Backstage passes to a TAFKAL80ETC concert":
-                        if item.quality > 0:
-                            if item.name != "Sulfuras, Hand of Ragnaros":
-                                item.quality = item.quality - 1
-                    else:
-                        item.quality = item.quality - item.quality
-                else:
-                    if item.quality < 50:
-                        item.quality = item.quality + 1
+def increase_item_quality(item: Item, amount: int = 1) -> None:
+    item.quality = min(50, item.quality + amount)
+class ItemUpdater(Protocol):
+    def update_item_sell_in(self, item: Item) -> None: ...
 
+    def update_item_quality(self, item: Item) -> None: ...
+class DefaultItemUpdater(ItemUpdater):
+    def update_item_sell_in(self, item: Item) -> None:
+        decrease_item_sell_in(item, days=1)
 
-class Item:
-    def __init__(self, name, sell_in, quality):
-        self.name = name
-        self.sell_in = sell_in
-        self.quality = quality
+    def update_item_quality(self, item: Item) -> None:
+        decrease_item_quality(item, amount=1)
+        if item.sell_in < 0:
+            decrease_item_quality(item, amount=1)
 
-    def __repr__(self):
-        return "%s, %s, %s" % (self.name, self.sell_in, self.quality)
+class AgedBrieItemUpdater(DefaultItemUpdater):
+    def update_item_quality(self, item: Item) -> None:
+        increase_item_quality(item, amount=1)
+
+class SulfurasItemUpdater(DefaultItemUpdater):
+    def update_item_sell_in(self, item: Item) -> None:
+        pass
+    def update_item_quality(self, item: Item) -> None:
+        pass
+class BackstageItemUpdater(DefaultItemUpdater):
+    def update_item_quality(self, item: Item) -> None:
+        increase_item_quality(item, amount=1)
+        if item.sell_in <= 10:
+            increase_item_quality(item, amount=1)
+        if item.sell_in <= 5:
+            increase_item_quality(item, amount=1)
+        if item.sell_in < 0:
+            item.quality = 0
+class ConjuredItemUpdater(DefaultItemUpdater):
+    def update_item_quality(self, item: Item) -> None:
+        decrease_item_quality(item, amount=2)
+        if item.sell_in < 0:
+            decrease_item_quality(item, amount=2)
+
+# we need to create specifications for 4 items:
+AGED_BRIE = "Aged Brie"
+SULFURAS = "Sulfuras, Hand of Ragnaros"
+BACKSTAGE = "Backstage passes to a TAFKAL80ETC concert"
+CONJURED = "Conjured Mana Cake"
+
+ITEM_UPDATER: dict[str, ItemUpdater] = {
+    AGED_BRIE: AgedBrieItemUpdater(),
+    SULFURAS: SulfurasItemUpdater(),
+    BACKSTAGE: BackstageItemUpdater(),
+    CONJURED: ConjuredItemUpdater(),
+}
+
+def update_quality_list(items: Iterable[Item]) -> None:
+    for item in items:
+        update_quality_selected_item(item)
+    
+def update_quality_selected_item(item: Item) -> None:
+    updater = ITEM_UPDATER.get(item.name, DefaultItemUpdater())
+    updater.update_item_sell_in(item)
+    updater.update_item_quality(item)
