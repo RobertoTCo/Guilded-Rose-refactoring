@@ -4,3 +4,7 @@
 .idea/
 *.iml
 /venv/
+/__pycache__/
+/__pytest__/
+.pytest_cache
+tests/__pycache__/
