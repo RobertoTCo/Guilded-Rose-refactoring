@@ -1,6 +1,6 @@
 from gilded_rose import update_quality_list, Item, CONJURED
 
-def test_conjured_quality_decreases_as_twice():
+def test_conjured_quality_decreases_by_two():
     items = [Item(CONJURED, 1, 10)]
     update_quality_list(items)
     assert 8 == items[0].quality
